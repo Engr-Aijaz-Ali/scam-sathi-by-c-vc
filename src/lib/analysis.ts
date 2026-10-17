@@ -106,10 +106,10 @@ export function demoAnalyze({ message, lang }: AnalysisRequest): AnalysisResult 
   const hits = RULES.filter((r) => r.re.test(message));
   const score = hits.reduce((s, r) => s + r.weight, 0);
   const risk: RiskLevel = score >= 5 ? "high" : score >= 2 ? "medium" : "low";
-  const top = [...hits].sort((a, b) => b.weight - a.weight)[0];
+  const top: Rule | undefined = [...hits].sort((a, b) => b.weight - a.weight)[0];
   return {
     risk,
-    category: CATS[top?.cat ?? "none"][lang],
+    category: (CATS[top?.cat ?? "none"] ?? CATS.none!)[lang],
     warningSigns: hits.map((h) => h.sign[lang]),
     explanation: EXPL[risk][lang],
     actions: ACTIONS[risk][lang],
