@@ -36,10 +36,9 @@ function extractJson(text: string): Omit<AnalysisResult, "isDemo"> {
   if (start === -1 || end === -1) throw new Error("No JSON in Gemini response");
   const parsed = JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>;
 
+  const rawRisk = parsed["risk"];
   const risk: RiskLevel =
-    parsed.risk === "high" || parsed.risk === "medium" || parsed.risk === "low"
-      ? parsed.risk
-      : "medium";
+    rawRisk === "high" || rawRisk === "medium" || rawRisk === "low" ? rawRisk : "medium";
 
   const str = (v: unknown, fallback: string) => (typeof v === "string" && v.trim() ? v.trim() : fallback);
   const strArr = (v: unknown) =>
@@ -47,15 +46,15 @@ function extractJson(text: string): Omit<AnalysisResult, "isDemo"> {
 
   return {
     risk,
-    category: str(parsed.category, "Analysis"),
-    warningSigns: strArr(parsed.warningSigns),
-    explanation: str(parsed.explanation, "The message could not be fully analyzed."),
-    actions: strArr(parsed.actions),
+    category: str(parsed["category"], "Analysis"),
+    warningSigns: strArr(parsed["warningSigns"]),
+    explanation: str(parsed["explanation"], "The message could not be fully analyzed."),
+    actions: strArr(parsed["actions"]),
   };
 }
 
 export const analyzeMessageFn = createServerFn({ method: "POST" })
-  .inputValidator((data: AnalysisRequest) => {
+  .inputValidator((data: AnalysisRequest): AnalysisRequest => {
     const msg = (data?.message ?? "").trim();
     if (msg.length < MIN_LEN || msg.length > MAX_LEN) throw new Error("Invalid message length");
     const lang = data?.lang === "roman" || data?.lang === "ur" ? data.lang : "en";
