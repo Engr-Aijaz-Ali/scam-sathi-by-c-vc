@@ -109,7 +109,7 @@ export function demoAnalyze({ message, lang }: AnalysisRequest): AnalysisResult 
   const top: Rule | undefined = [...hits].sort((a, b) => b.weight - a.weight)[0];
   return {
     risk,
-    category: (CATS[top?.cat ?? "none"] ?? CATS.none!)[lang],
+    category: (CATS[top?.cat ?? "none"] ?? CATS["none"]!)[lang],
     warningSigns: hits.map((h) => h.sign[lang]),
     explanation: EXPL[risk][lang],
     actions: ACTIONS[risk][lang],
