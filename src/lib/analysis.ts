@@ -13,19 +13,34 @@ export interface AnalysisResult {
   isDemo: boolean;
 }
 
+export interface AnalysisImage {
+  /** Base64-encoded image bytes (no data: prefix). */
+  data: string;
+  mimeType: string;
+}
+
 export interface AnalysisRequest {
   message: string;
   lang: Lang;
+  image?: AnalysisImage;
 }
 
 export const MIN_LEN = 15;
 export const MAX_LEN = 5000;
+export const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+export const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 export function validateMessage(msg: string): "errEmpty" | "errShort" | "errLong" | null {
   const m = msg.trim();
   if (!m) return "errEmpty";
   if (m.length < MIN_LEN) return "errShort";
   if (m.length > MAX_LEN) return "errLong";
+  return null;
+}
+
+export function validateImage(file: { type: string; size: number }): "errImageType" | "errImageSize" | null {
+  if (!IMAGE_TYPES.includes(file.type)) return "errImageType";
+  if (file.size > MAX_IMAGE_BYTES) return "errImageSize";
   return null;
 }
 
