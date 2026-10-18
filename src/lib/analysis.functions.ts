@@ -29,7 +29,7 @@ Respond ONLY with a JSON object of this exact shape:
 Rules: risk must be exactly "high", "medium" or "low". Be concise. Never ask follow-up questions. Write ALL text fields in the requested language.`;
 
 interface GeminiResponse {
-  candidates?: { content?: { parts?: { text?: string }[] }[] }[];
+  candidates?: { content?: { parts?: { text?: string }[] } }[];
   error?: { message?: string };
 }
 
