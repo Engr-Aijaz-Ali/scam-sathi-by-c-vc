@@ -77,7 +77,9 @@ export const analyzeMessageFn = createServerFn({ method: "POST" })
       throw new Error("Invalid message length");
     }
     const lang = data?.lang === "roman" || data?.lang === "ur" ? data.lang : "en";
-    return { message: msg, lang, image: hasImage ? { data: img!.data, mimeType: img!.mimeType } : undefined };
+    const req: AnalysisRequest = { message: msg, lang };
+    if (hasImage) req.image = { data: img!.data, mimeType: img!.mimeType };
+    return req;
   })
   .handler(async ({ data }): Promise<{ ok: true; result: AnalysisResult } | { ok: false; error: string }> => {
     const apiKey = process.env["ScamSathi"];
