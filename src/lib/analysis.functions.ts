@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { AnalysisRequest, AnalysisResult, RiskLevel } from "./analysis";
 import { MAX_LEN, MIN_LEN } from "./analysis";
 
-const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const LANG_NAME: Record<AnalysisRequest["lang"], string> = {
@@ -87,7 +87,7 @@ export const analyzeMessageFn = createServerFn({ method: "POST" })
             ],
           },
         ],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 1024, responseMimeType: "application/json" },
+        generationConfig: { temperature: 0.2, maxOutputTokens: 2048, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } },
       }),
     });
 
