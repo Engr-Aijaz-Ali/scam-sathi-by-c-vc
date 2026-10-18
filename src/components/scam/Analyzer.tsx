@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { Loader2, ScanSearch, X, AlertCircle, ShieldQuestion } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,21 +8,24 @@ import { t, type Lang } from "@/lib/i18n";
 import { ResultCard } from "./ResultCard";
 
 export function Analyzer({ lang }: { lang: Lang }) {
+  const analyze = useServerFn(analyzeMessage);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
 
   async function run() {
+    if (loading) return;
     const v = validateMessage(msg);
     if (v) return setError(v);
     setError(null);
     setLoading(true);
     setResult(null);
     try {
-      setResult(await analyzeMessage({ message: msg.trim(), lang }));
-    } catch {
-      setError("errGeneric");
+      setResult(await analyze({ message: msg.trim(), lang }));
+    } catch (cause) {
+      const code = cause instanceof Error ? cause.message : "";
+      setError(["errUnavailable", "errQuota", "errTimeout", "errConfiguration"].includes(code) ? code : "errGeneric");
     } finally {
       setLoading(false);
     }
@@ -34,6 +38,7 @@ export function Analyzer({ lang }: { lang: Lang }) {
         <Textarea
           id="msg"
           value={msg}
+          disabled={loading}
           maxLength={MAX_LEN + 100}
           onChange={(e) => { setMsg(e.target.value); if (error) setError(null); }}
           placeholder={t(lang, "placeholder")}
@@ -62,18 +67,20 @@ export function Analyzer({ lang }: { lang: Lang }) {
         <p className="mt-5 mb-2 text-sm text-muted-foreground">{t(lang, "tryExample")}</p>
         <div className="flex flex-wrap gap-2">
           {EXAMPLES.map((ex) => (
-            <button
+            <Button
               key={ex.text}
+              variant="outline"
+              disabled={loading}
               onClick={() => { setMsg(ex.text); setError(null); setResult(null); }}
               className="rounded-full border border-primary/30 bg-accent/40 px-3 py-1.5 text-sm text-accent-foreground transition hover:bg-accent"
             >
               {ex.label[lang]}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
-      <div aria-live="polite">
+      <div aria-live="polite" aria-busy={loading}>
         {loading ? (
           <div className="card-elevated flex min-h-80 flex-col items-center justify-center gap-3 p-6 text-muted-foreground">
             <Loader2 className="size-10 animate-spin text-primary" />

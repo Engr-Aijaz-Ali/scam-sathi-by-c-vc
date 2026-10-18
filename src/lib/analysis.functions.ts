@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { AnalysisRequest, AnalysisResult, RiskLevel } from "./analysis";
 import { MAX_LEN, MIN_LEN } from "./analysis";
 
-const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_MODEL = "gemini-3.8-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const LANG_NAME: Record<AnalysisRequest["lang"], string> = {
@@ -37,14 +37,20 @@ function extractJson(text: string): Omit<AnalysisResult, "isDemo"> {
   const parsed = JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>;
 
   const rawRisk = parsed["risk"];
-  const risk: RiskLevel =
-    rawRisk === "high" || rawRisk === "medium" || rawRisk === "low" ? rawRisk : "medium";
+   if (rawRisk !== "high" && rawRisk !== "medium" && rawRisk !== "low") throw new Error("Invalid risk");
+   const risk: RiskLevel = rawRisk;
 
   const str = (v: unknown, fallback: string) => (typeof v === "string" && v.trim() ? v.trim() : fallback);
   const strArr = (v: unknown) =>
     Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && !!x.trim()).map((x) => x.trim()) : [];
 
-  return {
+   if (typeof parsed["category"] !== "string" || !parsed["category"].trim() ||
+       typeof parsed["explanation"] !== "string" || !parsed["explanation"].trim() ||
+       !Array.isArray(parsed["warningSigns"]) || !parsed["warningSigns"].every((s) => typeof s === "string" && s.trim()) ||
+       !Array.isArray(parsed["actions"]) || parsed["actions"].length === 0 || !parsed["actions"].every((s) => typeof s === "string" && s.trim())) {
+     throw new Error("Invalid AI response");
+   }
+   return {
     risk,
     category: str(parsed["category"], "Analysis"),
     warningSigns: strArr(parsed["warningSigns"]),
@@ -60,13 +66,15 @@ export const analyzeMessageFn = createServerFn({ method: "POST" })
     const lang = data?.lang === "roman" || data?.lang === "ur" ? data.lang : "en";
     return { message: msg, lang };
   })
-  .handler(async ({ data }): Promise<AnalysisResult> => {
+  .handler(async ({ data }): Promise<{ ok: true; result: AnalysisResult } | { ok: false; error: string }> => {
     const apiKey = process.env["ScamSathi"];
-    if (!apiKey) throw new Error("AI key not configured");
+    if (!apiKey) return { ok: false, error: "errConfiguration" };
 
-    const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+    try {
+    const res = await fetch(GEMINI_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents: [
@@ -79,18 +87,23 @@ export const analyzeMessageFn = createServerFn({ method: "POST" })
             ],
           },
         ],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 1024, responseMimeType: "application/json" },
+        generationConfig: { temperature: 0.2, maxOutputTokens: 2048, responseMimeType: "application/json" },
       }),
     });
 
     const body = (await res.json().catch(() => null)) as GeminiResponse | null;
     if (!res.ok) {
-      console.error("Gemini error", res.status, body?.error?.message);
-      throw new Error("AI analysis failed");
+      console.error("Gemini analysis request failed", { status: res.status });
+      return { ok: false, error: res.status === 429 ? "errQuota" : res.status === 400 || res.status === 403 ? "errConfiguration" : "errUnavailable" };
     }
 
     const text = body?.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
     if (!text) throw new Error("Empty AI response");
 
-    return { ...extractJson(text), isDemo: false };
+    return { ok: true, result: { ...extractJson(text), isDemo: false } };
+    } catch (error) {
+      const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+      console.error("Gemini analysis failed", { reason: timedOut ? "timeout" : "connection-or-response" });
+      return { ok: false, error: timedOut ? "errTimeout" : "errUnavailable" };
+    }
   });
