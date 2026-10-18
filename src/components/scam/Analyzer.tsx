@@ -77,13 +77,9 @@ export function Analyzer({ lang }: { lang: Lang }) {
     setLoading(true);
     setResult(null);
     try {
-      setResult(
-        await analyze({
-          message: msg.trim(),
-          lang,
-          image: image ? { data: image.data, mimeType: image.mimeType } : undefined,
-        }),
-      );
+      const req: Parameters<typeof analyze>[0] = { message: msg.trim(), lang };
+      if (image) req.image = { data: image.data, mimeType: image.mimeType };
+      setResult(await analyze(req));
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : "";
       setError(
