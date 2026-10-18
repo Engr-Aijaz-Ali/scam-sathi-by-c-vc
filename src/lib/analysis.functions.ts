@@ -62,11 +62,13 @@ export const analyzeMessageFn = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<AnalysisResult> => {
     const apiKey = process.env["ScamSathi"];
-    if (!apiKey) throw new Error("AI key not configured");
+    if (!apiKey) return { ok: false, error: "errConfiguration" };
 
-    const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+    try {
+    const res = await fetch(GEMINI_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents: [
@@ -85,12 +87,17 @@ export const analyzeMessageFn = createServerFn({ method: "POST" })
 
     const body = (await res.json().catch(() => null)) as GeminiResponse | null;
     if (!res.ok) {
-      console.error("Gemini error", res.status, body?.error?.message);
-      throw new Error("AI analysis failed");
+      console.error("Gemini analysis request failed", { status: res.status });
+      return { ok: false, error: res.status === 429 ? "errQuota" : res.status === 400 || res.status === 403 ? "errConfiguration" : "errUnavailable" };
     }
 
     const text = body?.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
     if (!text) throw new Error("Empty AI response");
 
-    return { ...extractJson(text), isDemo: false };
+    return { ok: true, result: { ...extractJson(text), isDemo: false } };
+    } catch (error) {
+      const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+      console.error("Gemini analysis failed", { reason: timedOut ? "timeout" : "connection-or-response" });
+      return { ok: false, error: timedOut ? "errTimeout" : "errUnavailable" };
+    }
   });
