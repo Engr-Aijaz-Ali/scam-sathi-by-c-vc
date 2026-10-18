@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, ShieldAlert, ShieldCheck, Info, FlaskConical } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ShieldAlert, ShieldCheck, Info } from "lucide-react";
 import type { AnalysisResult } from "@/lib/analysis";
 import { t, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -13,15 +13,6 @@ export function ResultCard({ result, lang }: { result: AnalysisResult; lang: Lan
   const { cls, Icon } = RISK_STYLE[result.risk];
   return (
     <div className="card-elevated animate-in fade-in slide-in-from-bottom-2 p-5 sm:p-6 space-y-5">
-      {result.isDemo && (
-        <div className="rounded-xl border border-risk-medium/40 bg-risk-medium/10 p-3 text-sm">
-          <p className="flex items-center gap-2 font-bold text-risk-medium">
-            <FlaskConical className="size-4 shrink-0" /> {t(lang, "demoLabel")}
-          </p>
-          <p className="mt-1 text-muted-foreground">{t(lang, "demoNote")}</p>
-        </div>
-      )}
-
       <div className={cn("flex items-center gap-4 rounded-xl border p-4", cls)}>
         <Icon className="size-10 shrink-0" />
         <div>
