@@ -37,14 +37,20 @@ function extractJson(text: string): Omit<AnalysisResult, "isDemo"> {
   const parsed = JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>;
 
   const rawRisk = parsed["risk"];
-  const risk: RiskLevel =
-    rawRisk === "high" || rawRisk === "medium" || rawRisk === "low" ? rawRisk : "medium";
+   if (rawRisk !== "high" && rawRisk !== "medium" && rawRisk !== "low") throw new Error("Invalid risk");
+   const risk: RiskLevel = rawRisk;
 
   const str = (v: unknown, fallback: string) => (typeof v === "string" && v.trim() ? v.trim() : fallback);
   const strArr = (v: unknown) =>
     Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && !!x.trim()).map((x) => x.trim()) : [];
 
-  return {
+   if (typeof parsed["category"] !== "string" || !parsed["category"].trim() ||
+       typeof parsed["explanation"] !== "string" || !parsed["explanation"].trim() ||
+       !Array.isArray(parsed["warningSigns"]) || !parsed["warningSigns"].every((s) => typeof s === "string" && s.trim()) ||
+       !Array.isArray(parsed["actions"]) || parsed["actions"].length === 0 || !parsed["actions"].every((s) => typeof s === "string" && s.trim())) {
+     throw new Error("Invalid AI response");
+   }
+   return {
     risk,
     category: str(parsed["category"], "Analysis"),
     warningSigns: strArr(parsed["warningSigns"]),
@@ -60,7 +66,7 @@ export const analyzeMessageFn = createServerFn({ method: "POST" })
     const lang = data?.lang === "roman" || data?.lang === "ur" ? data.lang : "en";
     return { message: msg, lang };
   })
-  .handler(async ({ data }): Promise<AnalysisResult> => {
+  .handler(async ({ data }): Promise<{ ok: true; result: AnalysisResult } | { ok: false; error: string }> => {
     const apiKey = process.env["ScamSathi"];
     if (!apiKey) return { ok: false, error: "errConfiguration" };
 
