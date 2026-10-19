@@ -2,8 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { AnalysisRequest, AnalysisResult, RiskLevel } from "./analysis";
 import { IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_LEN, MIN_LEN } from "./analysis";
 
-const GEMINI_MODEL = "gemini-3.8-flash";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_MODEL = "gemini-3-flash-preview";const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const LANG_NAME: Record<AnalysisRequest["lang"], string> = {
   en: "English",
